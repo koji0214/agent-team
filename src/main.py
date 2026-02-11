@@ -16,10 +16,13 @@ def chat():
     console.print("Type 'exit' or 'quit' to end the session.")
 
     try:
-        from agent import Manager, Architect
+        from agent import Manager, Architect, Coder
         manager = Manager()
         architect = Architect()
+        coder = Coder()
+        
         manager.assign_agent("Architect", architect)
+        manager.assign_agent("Coder", coder)
         
         while True:
             try:

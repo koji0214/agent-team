@@ -63,7 +63,9 @@ class Manager(Agent):
     def delegate_task(self, agent_name: str, task_content: str) -> str:
         """
         指定されたエージェントに特定のタスクを依頼し、その結果を受け取ります。
-        利用可能なエージェント: Architect (設計担当)
+        利用可能なエージェント: 
+        - Architect (技術選定、システム設計、ディレクトリ構成案の作成担当)
+        - Coder (具体的なソースコードの実装、デバッグ担当)
         
         Args:
             agent_name (str): 依頼先のエージェント名。
