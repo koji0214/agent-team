@@ -1,38 +1,37 @@
-import unittest
+import pytest
 import os
 from unittest.mock import MagicMock, patch
 from agent.agent import Agent
 
-class TestAgent(unittest.TestCase):
+# 抽象クラスAgentをテストするための具象クラス
+class ConcreteAgent(Agent):
+    def execute_tool(self, tool_name, args):
+        return f"Executed {tool_name} with {args}"
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "dummy"})
-    def setUp(self):
-        # 抽象クラスなので、テスト用に具象クラスを作成
-        class ConcreteAgent(Agent):
-            def execute_tool(self, tool_name, args):
-                return f"Executed {tool_name} with {args}"
-        
-        # モックの設定
-        with patch('google.generativeai.GenerativeModel') as mock_model:
-            self.mock_chat = MagicMock()
-            mock_model.return_value.start_chat.return_value = self.mock_chat
-            self.agent = ConcreteAgent("TestBot", "Tester", "Just testing")
+@pytest.fixture
+def mock_genai():
+    with patch('google.generativeai.GenerativeModel') as mock_model:
+        mock_chat = MagicMock()
+        mock_model.return_value.start_chat.return_value = mock_chat
+        yield mock_chat
 
-    def test_init(self):
-        self.assertEqual(self.agent.name, "TestBot")
-        self.assertEqual(self.agent.role, "Tester")
-        self.assertEqual(self.agent.model_name, "gemini-2.0-flash")
+@pytest.fixture
+def agent(mock_genai):
+    with patch.dict(os.environ, {"GEMINI_API_KEY": "dummy"}):
+        return ConcreteAgent("TestBot", "Tester", "Just testing")
 
-    def test_send_message(self):
-        # Gemini APIのレスポンスをモック
-        mock_response = MagicMock()
-        mock_response.text = "Hello from Gemini"
-        self.mock_chat.send_message.return_value = mock_response
+def test_agent_init(agent):
+    assert agent.name == "TestBot"
+    assert agent.role == "Tester"
+    assert agent.model_name == "gemini-flash-lite-latest"  # 最新のデフォルト値を反映
 
-        response = self.agent.send_message("Hello")
-        
-        self.assertEqual(response, "Hello from Gemini")
-        self.mock_chat.send_message.assert_called_with("Hello")
+def test_agent_send_message(agent, mock_genai):
+    # Gemini APIのレスポンスをモック
+    mock_response = MagicMock()
+    mock_response.text = "Hello from Gemini"
+    mock_genai.send_message.return_value = mock_response
 
-if __name__ == '__main__':
-    unittest.main()
+    response = agent.send_message("Hello")
+    
+    assert response == "Hello from Gemini"
+    mock_genai.send_message.assert_called_with("Hello")

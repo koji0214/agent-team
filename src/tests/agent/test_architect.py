@@ -1,22 +1,23 @@
-import unittest
+import pytest
+import os
 from unittest.mock import MagicMock, patch
 from agent.architect import Architect
 
-class TestArchitect(unittest.TestCase):
-    @patch('google.generativeai.GenerativeModel')
-    @patch.dict('os.environ', {'GEMINI_API_KEY': 'dummy_key'})
-    def test_architect_initialization(self, mock_model):
-        architect = Architect()
-        self.assertEqual(architect.name, "Architect")
-        self.assertIn("アーキテクト", architect.role)
+@pytest.fixture
+def mock_env():
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'dummy_key'}):
+        yield
 
-    @patch('google.generativeai.GenerativeModel')
-    @patch.dict('os.environ', {'GEMINI_API_KEY': 'dummy_key'})
-    def test_architect_build_system_prompt(self, mock_model):
-        architect = Architect()
-        prompt = architect._build_system_prompt()
-        self.assertIn("Architect", prompt)
-        self.assertIn("役割:", prompt)
+@pytest.fixture
+def architect(mock_env):
+    with patch('google.generativeai.GenerativeModel'):
+        return Architect()
 
-if __name__ == '__main__':
-    unittest.main()
+def test_architect_initialization(architect):
+    assert architect.name == "Architect"
+    assert "アーキテクト" in architect.role
+
+def test_architect_build_system_prompt(architect):
+    prompt = architect._build_system_prompt()
+    assert "Architect" in prompt
+    assert "役割:" in prompt
