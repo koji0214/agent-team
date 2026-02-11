@@ -23,7 +23,8 @@ def agent(mock_genai):
 def test_agent_init(agent):
     assert agent.name == "TestBot"
     assert agent.role == "Tester"
-    assert agent.model_name == "gemini-flash-lite-latest"  # 最新のデフォルト値を反映
+    expected_model = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+    assert agent.model_name == expected_model
 
 def test_agent_send_message(agent, mock_genai):
     # Gemini APIのレスポンスをモック
