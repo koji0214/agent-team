@@ -13,7 +13,7 @@ class Agent(ABC):
     Gemini APIとの通信、履歴管理、基本的な思考プロセスを担当する。
     """
 
-    def __init__(self, name: str, role: str, instructions: str, model_name: Optional[str] = None):
+    def __init__(self, name: str, role: str, instructions: str, model_name: Optional[str] = None, tools: Optional[List[Any]] = None):
         """
         エージェントを初期化する。
 
@@ -21,11 +21,13 @@ class Agent(ABC):
             name (str): エージェントの名前（例: "Manager", "Coder"）。
             role (str): エージェントの役割（例: "Project Manager"）。
             instructions (str): システムプロンプトとしての詳細な指示。
-            model_name (str, optional): 使用するGeminiモデルの名前。未指定の場合は環境変数 GEMINI_MODEL_NAME または 'gemini-1.5-flash' を使用。
+            model_name (str, optional): 使用するGeminiモデルの名前。
+            tools (list, optional): エージェントが使用可能なツールのリスト。
         """
         self.name = name
         self.role = role
         self.instructions = instructions
+        self.tools = tools
         
         # モデル名の決定: 引数 > 環境変数 > デフォルト
         self.model_name = model_name or os.getenv("GEMINI_MODEL_NAME") or "gemini-1.5-flash"
@@ -41,15 +43,14 @@ class Agent(ABC):
             genai.configure(api_key=api_key)
 
         # モデルの初期化
-        # system_instruction パラメータは gemini-1.5 以降で使用可能と想定
-        # 0.3.2 SDKでの対応状況を確認しつつ、まずは標準的な構成で実装
         self.model = genai.GenerativeModel(
             model_name=self.model_name,
-            system_instruction=self._build_system_prompt()
+            system_instruction=self._build_system_prompt(),
+            tools=self.tools
         )
         
-        # チャットセッションの開始
-        self.chat_session = self.model.start_chat(history=[])
+        # チャットセッションの開始（自動関数呼び出しを有効化）
+        self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=True)
 
     def _build_system_prompt(self) -> str:
         """

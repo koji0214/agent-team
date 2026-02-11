@@ -42,10 +42,10 @@ def test_manager_decompose_task(manager):
     result = manager.execute_tool("decompose_task", args)
     
     assert isinstance(result, list)
-    assert "設計を作成する" in result
+    assert "設計ガイドラインの作成" in result
 
 def test_manager_delegate_task(manager, dummy_agent):
-    # タスク委譲のテスト
+    # タスク委任のテスト
     manager.assign_agent("Coder", dummy_agent)
     
     # Coderエージェントのレスポンスをモック
@@ -53,8 +53,8 @@ def test_manager_delegate_task(manager, dummy_agent):
     mock_response.text = "Implemented login system"
     dummy_agent.chat_session.send_message.return_value = mock_response
 
-    # 委譲を実行
-    result = manager._delegate_task("Coder", "Implement login")
+    # 委任を実行
+    result = manager.delegate_task("Coder", "Implement login")
     
-    assert "Response from Coder" in result
+    assert "Coder からの回答" in result
     assert "Implemented login system" in result
