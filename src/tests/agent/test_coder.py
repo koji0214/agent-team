@@ -65,3 +65,13 @@ def test_coder_execute_in_sandbox_error(coder, tmp_path):
     result = coder.execute_in_sandbox(command)
     
     assert "Exit Code: 127" in result or "Error executing command" in result
+
+def test_coder_ask_question(coder):
+    to_whom = "Manager"
+    question = "認証方式はどうすればよいですか？"
+    
+    result = coder.execute_tool("ask_question", {"to_whom": to_whom, "question": question})
+    
+    assert "質問を Manager に送信しました" in result
+    assert "指示を待ってください" in result
+
