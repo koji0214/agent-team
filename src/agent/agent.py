@@ -115,7 +115,7 @@ class Agent(ABC):
                 tool_results = []
                 for fc in function_calls:
                     result = self.execute_tool(fc.name, dict(fc.args))
-                    # 結果が長すぎる場合は切り詰めるなどの処理も検討可能
+                    # TODO: 結果が長すぎる場合は切り詰めるなどの処理も検討可能
                     tool_results.append({
                         "function_response": {
                             "name": fc.name,

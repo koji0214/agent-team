@@ -54,7 +54,7 @@ class Manager(Agent):
             List[str]: 分解されたタスクのリスト。
         """
         console.print(f"[bold magenta]Manager thinking:[/bold magenta] Decomposing task: {requirements}")
-        # 実際にはLLMに分解させたいが、今はツールとして呼ばれたこと自体をログに出す
+        # TODO: 実際にはLLMに分解させたいが、今はツールとして呼ばれたこと自体をログに出す
         # 自動実行されるため、戻り値がLLMのコンテキストに戻る
         tasks = ["設計ガイドラインの作成", "基本機能の実装", "単体テストの作成"]
         console.print(f"[bold magenta]Manager result:[/bold magenta] Generated {len(tasks)} tasks.")

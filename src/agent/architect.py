@@ -26,5 +26,5 @@ class Architect(Agent):
         super().__init__(name, role, instructions)
 
     def execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
-        # 今後、ファイルの書き出しなどのツールを追加予定
+        # TODO: 今後、ファイルの書き出しなどのツールを追加予定
         pass
