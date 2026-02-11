@@ -56,7 +56,7 @@
 ### フェーズ 4: コーダーの実装と報連相 (Implementation Phase)
 - [x] **Coder Agent 実装**: 実装に特化したエージェント。
 - [x] **ファイルの書き出しツール**: `sandbox/` ディレクトリにファイルを保存するスキル (`write_to_sandbox`)。
-- [ ] **実行・検証ツール**: sandbox内のコードを実行し、結果をCoderにフィードバックする仕組み。
+- [x] **実行・検証ツール**: sandbox内のコードを実行し、結果をCoderにフィードバックする仕組み (`execute_in_sandbox`)。
 - [ ] **実装と相談**: 
     - `ask_question(to_whom, content)`: 誰（Manager/Architect）に何を聞くか。
     - 実装 -> 疑問 -> 質問 -> 回答 -> 実装再開 のループ。
