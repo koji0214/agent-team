@@ -55,39 +55,29 @@
 
 ## 開始方法 (Docker + uv)
 
-1. リポジトリのクローン
+1. リポジトリのクローンとディレクトリ移動
    ```bash
    git clone <your-repo-url>
    cd gemini-cli-agent-team
    ```
 
-2. ディレクトリの準備
-   ```bash
-   git clone <your-repo-url>
-   cd gemini-cli-agent-team
-   mkdir -p src sandbox
-   ```
 
-3. 依存関係の定義 (初回のみ)
-   本プロジェクトは `uv` で管理されています。
-   ```bash
-   # ローカルにuvがある場合 (pyproject.toml生成)
-   uv init
-   uv add google-generativeai typer rich python-dotenv pydantic questionary
-   ```
 
-4. 環境変数の設定
+2. 環境変数の設定
    `.env` ファイルを作成し、APIキーを設定します。
    ```bash
    echo "GEMINI_API_KEY=your_api_key_here" > .env
+   # モデル名を指定する場合 (Optional, default: gemini-2.5-flash-lite)
+   # echo "GEMINI_MODEL_NAME=gemini-2.5-flash" >> .env
    ```
 
-5. コンテナのビルドと起動 (バックグラウンド実行)
+3. コンテナのビルドと起動 (バックグラウンド実行)
    ```bash
    docker compose up -d --build
    ```
+   > **Note**: `.env` ファイルを変更した場合（例: モデル名の変更）は、`docker compose up -d` を再実行することで変更が反映されます（`--build` オプションは不要です）。依存パッケージを追加した場合は `--build` が必要です。
 
-6. エージェントチームとの対話 (CLIの起動)
+4. エージェントチームとの対話 (CLIの起動)
    コンテナ内でアプリケーションを実行します。
    ```bash
    docker compose exec agent-team python src/main.py
@@ -96,7 +86,7 @@
    起動すると、Managerエージェントとのチャットセッションが開始されます。
    終了するには `exit` または `quit` と入力してください。
 
-7. テストの実行 (単体テスト)
+5. テストの実行 (単体テスト)
    `pytest` を使用してテストを実行します。
    ```bash
    docker compose exec agent-team pytest src/tests
