@@ -67,12 +67,19 @@ class Agent(ABC):
         回答は常に日本語で行ってください。
         """
 
-    def send_message(self, message: str) -> str:
+    def send_message(self, message: str, max_iterations: int = 10) -> str:
         """
         ユーザーまたは他のエージェントからのメッセージを受け取り、応答を生成する。
+        
+        Args:
+            message (str): 入力メッセージ。
+            max_iterations (int): ツール実行の最大反復回数。無限ループ防止用。
+
+        Returns:
+            str: エージェントからの最終的な応答。
         """
         # 連続リクエストによる429を防ぐための最小インターバル（秒）
-        request_interval = 1.0
+        request_interval = 2.0  # 安全のため少し延ばす
 
         # 最初のメッセージを送信
         try:
@@ -81,7 +88,14 @@ class Agent(ABC):
             return f"APIエラーが発生しました: {str(e)}"
 
         # 関数呼び出しのループ処理
+        iteration_count = 0
         while True:
+            # 無限ループ防止チェック
+            if iteration_count >= max_iterations:
+                msg = f"\n[System Warning] Tool execution limit reached ({max_iterations} iterations). Loop forced to stop."
+                console.print(f"[bold red]{msg}[/bold red]")
+                return response.text + msg
+
             # APIクォータを保護するためのインターバル
             time.sleep(request_interval)
             
@@ -93,10 +107,15 @@ class Agent(ABC):
                     # 思考が完了し、最終的なテキスト応答が得られた
                     return response.text
 
+                # カウントアップ
+                iteration_count += 1
+                console.print(f"[dim]{self.name} tool iteration: {iteration_count}/{max_iterations}[/dim]")
+
                 # ツール実行結果のリストを作成
                 tool_results = []
                 for fc in function_calls:
                     result = self.execute_tool(fc.name, dict(fc.args))
+                    # 結果が長すぎる場合は切り詰めるなどの処理も検討可能
                     tool_results.append({
                         "function_response": {
                             "name": fc.name,
