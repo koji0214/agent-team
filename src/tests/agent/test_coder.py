@@ -46,3 +46,22 @@ def test_coder_write_to_sandbox_security_violation(coder, tmp_path):
     assert "Error: Security violation" in result
     # ファイルが作成されていないことを確認
     assert not (tmp_path.parent / "outside.txt").exists()
+
+def test_coder_execute_in_sandbox_success(coder, tmp_path):
+    coder.sandbox_dir = tmp_path
+    
+    # シンプルなechoコマンドの実行
+    command = "echo 'Hello from Sandbox'"
+    result = coder.execute_in_sandbox(command)
+    
+    assert "Exit Code: 0" in result
+    assert "Hello from Sandbox" in result
+
+def test_coder_execute_in_sandbox_error(coder, tmp_path):
+    coder.sandbox_dir = tmp_path
+    
+    # 存在しないコマンドの実行
+    command = "non_existent_command_123"
+    result = coder.execute_in_sandbox(command)
+    
+    assert "Exit Code: 127" in result or "Error executing command" in result

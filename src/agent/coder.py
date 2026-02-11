@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 from typing import Dict, Any
 from rich.console import Console
@@ -24,14 +25,17 @@ class Coder(Agent):
         1. Manager または Architect から提供された設計書・指示に基づき、高品質なコードを記述する。
         2. プログラミング言語のベストプラクティスに従い、読みやすく保守性の高いコードを書く。
         3. 実装したコードを `write_to_sandbox` ツールを使ってファイルとして保存する。
-        4. 不明な点がある場合は、Manager に対して質問を行う。
+        4. 保存したコードを `execute_in_sandbox` ツールを使って実行し、期待通りに動作するか検証する。
+        5. エラーが発生した場合は、出力を確認して修正を行う。
+        6. 不明な点がある場合は、Manager に対して質問を行う。
         """
         instructions = """
         実装を行う際は、まず指示された要件を正しく理解しているか確認し、その後実装に入ってください。
         コードを生成したら、必ず `write_to_sandbox` を使用して物理ファイルとして保存してください。
-        保存先のパスは `sandbox/` ディレクトリ起点の相対パスで指定してください。
+        保存後は `execute_in_sandbox` を使用して動作確認を行い、正常に動作することを確認してから完了報告をしてください。
+        コマンドの実行時は、カレントディレクトリが `sandbox/` になっていることに注意してください。
         """
-        super().__init__(name, role, instructions, tools=[self.write_to_sandbox])
+        super().__init__(name, role, instructions, tools=[self.write_to_sandbox, self.execute_in_sandbox])
         # プロジェクトルートからの相対パスでsandboxの場所を特定
         self.sandbox_dir = Path("sandbox")
         if not self.sandbox_dir.exists():
@@ -71,7 +75,45 @@ class Coder(Agent):
             console.print(f"[bold red]{error_msg}[/bold red]")
             return error_msg
 
+    def execute_in_sandbox(self, command: str) -> str:
+        """
+        sandbox ディレクトリ内でシェルコマンドを実行し、その結果を返します。
+        
+        Args:
+            command (str): 実行するコマンド（例: 'python app.py'）。
+            
+        Returns:
+            str: 標準出力と標準エラーの内容。
+        """
+        try:
+            console.print(f"[bold cyan]Coder executing in sandbox:[/bold cyan] {command}")
+            
+            # sandboxディレクトリ内でコマンドを実行
+            result = subprocess.run(
+                command,
+                shell=True,
+                cwd=self.sandbox_dir,
+                capture_output=True,
+                text=True,
+                timeout=30  # 暴走防止のためタイムアウトを設定
+            )
+            
+            output = f"Exit Code: {result.returncode}\n"
+            if result.stdout:
+                output += f"STDOUT:\n{result.stdout}\n"
+            if result.stderr:
+                output += f"STDERR:\n{result.stderr}\n"
+            
+            return output
+            
+        except subprocess.TimeoutExpired:
+            return "Error: Command timed out after 30 seconds."
+        except Exception as e:
+            return f"Error executing command: {str(e)}"
+
     def execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
         if tool_name == "write_to_sandbox":
             return self.write_to_sandbox(**args)
+        elif tool_name == "execute_in_sandbox":
+            return self.execute_in_sandbox(**args)
         return f"Tool {tool_name} not found."
