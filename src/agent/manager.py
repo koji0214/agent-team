@@ -1,4 +1,7 @@
 from typing import Dict, Any, List
+import json
+import ast
+import google.generativeai as genai
 from rich.console import Console
 
 # Consoleインスタンス
@@ -54,11 +57,47 @@ class Manager(Agent):
             List[str]: 分解されたタスクのリスト。
         """
         console.print(f"[bold magenta]Manager thinking:[/bold magenta] Decomposing task: {requirements}")
-        # TODO: 実際にはLLMに分解させたいが、今はツールとして呼ばれたこと自体をログに出す
-        # 自動実行されるため、戻り値がLLMのコンテキストに戻る
-        tasks = ["設計ガイドラインの作成", "基本機能の実装", "単体テストの作成"]
-        console.print(f"[bold magenta]Manager result:[/bold magenta] Generated {len(tasks)} tasks.")
-        return tasks
+        
+        # LLMを使用してタスクを分解する
+        try:
+            # 自身と同じモデル構成を使用するが、ツールは無効化して純粋なテキスト生成として扱う
+            decomposition_model = genai.GenerativeModel(
+                model_name=self.model_name,
+                system_instruction="""
+                あなたは熟練のプロジェクトマネージャーです。
+                与えられた要件を、実行可能な具体的なタスクのリストに分解してください。
+                
+                出力形式:
+                Pythonのリスト形式の文字列のみを出力してください。余計なマークダウンや説明は不要です。
+                例: ["要件定義書の作成", "データベース設計", "API実装", "テスト"]
+                """,
+            )
+            
+            response = decomposition_model.generate_content(f"要件: {requirements}")
+            response_text = response.text.strip()
+            
+            # マークダウンのコードブロックが含まれている場合のクリーニング
+            if response_text.startswith("```"):
+                response_text = response_text.replace("```json", "").replace("```python", "").replace("```", "").strip()
+            
+            # 文字列をリストに変換
+            try:
+                tasks = ast.literal_eval(response_text)
+                if not isinstance(tasks, list):
+                    raise ValueError("Output is not a list")
+            except (ValueError, SyntaxError):
+                # パース失敗時は単純に改行で分割などのフォールバック、あるいはエラー
+                console.print(f"[red]Failed to parse task list from LLM: {response_text}[/red]")
+                # フォールバックとしてJSONパースを試みる
+                tasks = json.loads(response_text)
+            
+            console.print(f"[bold magenta]Manager result:[/bold magenta] Generated {len(tasks)} tasks.")
+            return tasks
+            
+        except Exception as e:
+            console.print(f"[red]Error in decompose_task: {str(e)}[/red]")
+            # エラー時のフォールバック
+            return ["タスク分解に失敗しました", "要件を再確認してください"]
 
     def delegate_task(self, agent_name: str, task_content: str) -> str:
         """
