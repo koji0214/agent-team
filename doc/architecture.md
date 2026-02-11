@@ -78,23 +78,60 @@ sequenceDiagram
     Agent-->>User: 最終回答 ("できました")
 ```
 
-## 3. エージェント間通信 (Interaction) - タスク委譲
+## 3. エージェント間通信 (Interaction) - タスク委譲の詳細
 
-ManagerがタスクをCoderに委譲し、結果を受け取るフロー。
+Managerがユーザーの依頼を解釈し、Architectに設計を、Coderに実装を段階的に委譲して成果を得るフローです。
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Manager
-    participant Coder
+    autonumber
+    actor User
+    participant CLI as main.py
+    participant M as Manager (Agent)
+    participant A as Architect (Agent)
+    participant C as Coder (Agent)
+    participant S as Sandbox (Filesystem/Subprocess)
+    participant LLM as Gemini API
 
-    User->>Manager: "ログイン機能を作って"
-    Manager->>Manager: タスク分解 & 計画
+    User->>CLI: 指示入力 (例: "新しいアプリを作って")
+    CLI->>M: send_message
     
-    Manager->>Coder: "JWT認証の実装をお願い" (Delegate)
-    Coder->>Coder: 実装作業 (Think & Tool Loop)
-    Coder-->>Manager: "実装完了。ファイルは src/auth.py です" (Report)
+    Note over M, LLM: Manager思考
+    M->>LLM: _call_api
+    LLM-->>M: tool_call: delegate_task(to="Architect", ...)
+    
+    rect rgb(240, 240, 255)
+        Note over M, A: 【設計フェーズ】
+        M->>A: send_message(設計依頼)
+        A->>LLM: _call_api
+        LLM-->>A: 設計案 (Markdown/構造案)
+        A-->>M: 設計ドキュメント
+    end
 
-    Manager->>Manager: 成果物確認
-    Manager-->>User: "ログイン機能の実装が完了しました"
+    Note over M, LLM: Manager思考 (設計受領後)
+    M->>LLM: _call_api
+    LLM-->>M: tool_call: delegate_task(to="Coder", ...)
+
+    rect rgb(240, 240, 240)
+        Note over M, C: 【実装フェーズ】
+        M->>C: send_message(実装依頼 + 設計案)
+        
+        rect rgb(220, 240, 220)
+            Note over C, LLM: Coder内部ループ
+            C->>LLM: _call_api
+            LLM-->>C: tool_call: write_to_sandbox
+            C->>S: Write File
+            LLM-->>C: tool_call: execute_in_sandbox
+            C->>S: Run & Verify
+            S-->>C: Result
+            LLM-->>C: "Complete"
+        end
+        
+        C-->>M: 実装完了報告
+    end
+
+    M->>LLM: tool_result (Delegate Result)
+    LLM-->>M: 最終回答
+    M-->>CLI: Response Text
+    CLI->>User: 完了報告
 ```
