@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Any, Dict
 import os
+import time
 import google.generativeai as genai
 from rich.console import Console
 
@@ -49,8 +50,8 @@ class Agent(ABC):
             tools=self.tools
         )
         
-        # チャットセッションの開始（自動関数呼び出しを有効化）
-        self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=True)
+        # チャットセッションの開始（手動で関数呼び出しを制御するため False に設定）
+        self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=False)
 
     def _build_system_prompt(self) -> str:
         """
@@ -69,47 +70,76 @@ class Agent(ABC):
     def send_message(self, message: str) -> str:
         """
         ユーザーまたは他のエージェントからのメッセージを受け取り、応答を生成する。
-
-        Args:
-            message (str): 入力メッセージ。
-
-        Returns:
-            str: エージェントの応答。
         """
+        # 連続リクエストによる429を防ぐための最小インターバル（秒）
+        request_interval = 1.0
+
+        # 最初のメッセージを送信
         try:
-            # コンソールに進捗を表示
-            console.print(f"[bold blue]{self.name}[/bold blue] is thinking...")
-            
-            # Gemini APIへのリクエスト
-            response = self.chat_session.send_message(message)
-            
-            # 応答テキストの取得
-            response_text = response.text
-            
-            # 履歴への追加などはSDKが管理してくれるが、独自ログが必要ならここで処理
-            
-            return response_text
-            
+            response = self._call_api(message)
         except Exception as e:
-            error_str = str(e)
-            advice = ""
+            return f"APIエラーが発生しました: {str(e)}"
+
+        # 関数呼び出しのループ処理
+        while True:
+            # APIクォータを保護するためのインターバル
+            time.sleep(request_interval)
             
-            if "404" in error_str:
-                advice = f"\n[yellow]ヒント: モデル '{self.model_name}' が見つかりません。[/yellow]"
-                advice += f"\n[yellow]scripts/check_models.py を実行して、利用可能なモデル名を確認し、.env の GEMINI_MODEL_NAME に設定してください。[/yellow]"
-            elif "429" in error_str and ("quota" in error_str.lower() or "limit" in error_str.lower()):
-                if "limit: 0" in error_str:
-                    advice = f"\n[yellow]重要: モデル '{self.model_name}' は現在のアカウントで有効化されていません（利用枠 0）。[/yellow]"
-                    advice += f"\n[yellow].env の GEMINI_MODEL_NAME を、より標準的な 'gemini-flash-latest' に変更してください。[/yellow]"
+            try:
+                # ツール実行依頼が含まれているか確認
+                function_calls = [part.function_call for part in response.parts if part.function_call]
+                
+                if not function_calls:
+                    # 思考が完了し、最終的なテキスト応答が得られた
+                    return response.text
+
+                # ツール実行結果のリストを作成
+                tool_results = []
+                for fc in function_calls:
+                    result = self.execute_tool(fc.name, dict(fc.args))
+                    tool_results.append({
+                        "function_response": {
+                            "name": fc.name,
+                            "response": {"result": result}
+                        }
+                    })
+                
+                # 実行結果をモデルに返送
+                console.print(f"[dim]{self.name} is processing tool results...[/dim]")
+                response = self._call_api(tool_results)
+                
+            except Exception as e:
+                return f"処理中にエラーが発生しました: {str(e)}"
+
+    def _call_api(self, content: Any, max_retries: int = 3) -> Any:
+        """
+        Gemini APIを呼び出し、429エラー時はリトライを行います。
+        """
+        initial_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                if attempt == 0:
+                    console.print(f"[bold blue]{self.name}[/bold blue] is thinking...")
                 else:
-                    advice = f"\n[yellow]ヒント: クォータ制限に達しました。しばらく待つか、別のモデル（'gemini-flash-latest' など）を試してください。[/yellow]"
-            
-            if advice:
-                console.print(f"[bold red]API Error in {self.name}:[/bold red] {error_str}{advice}")
-            else:
-                console.print(f"[bold red]Error in {self.name}:[/bold red] {error_str}")
-            
-            return f"申し訳ありません。エラーが発生しました（{type(e).__name__}）。"
+                    console.print(f"[yellow]Retrying {self.name} (attempt {attempt + 1}/{max_retries})...[/yellow]")
+                
+                return self.chat_session.send_message(content)
+                
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str and ("quota" in error_str.lower() or "limit" in error_str.lower()):
+                    if "limit: 0" in error_str:
+                        raise e # モデル利用不可は即時失敗
+                    
+                    if attempt < max_retries - 1:
+                        wait_time = initial_delay * (2 ** attempt)
+                        console.print(f"[yellow]Quota exceeded. Waiting {wait_time}s before retry...[/yellow]")
+                        time.sleep(wait_time)
+                        continue
+                raise e
+        
+        raise Exception(f"{self.name} failed after {max_retries} attempts.")
 
     @abstractmethod
     def execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
