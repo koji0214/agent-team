@@ -10,7 +10,7 @@ def mock_env():
 
 @pytest.fixture
 def coder(mock_env):
-    with patch('google.generativeai.GenerativeModel'):
+    with patch('google.genai.Client'):
         return Coder()
 
 def test_coder_initialization(coder):

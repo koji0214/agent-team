@@ -11,7 +11,7 @@ def mock_env():
 
 @pytest.fixture
 def architect(mock_env):
-    with patch('google.generativeai.GenerativeModel'):
+    with patch('google.genai.Client'):
         return Architect()
 
 def test_architect_initialization(architect):

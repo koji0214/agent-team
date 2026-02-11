@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai
 from rich.console import Console
 
 console = Console()
@@ -8,7 +8,7 @@ def test_connection():
     api_key = os.getenv("GEMINI_API_KEY")
     model_name = os.getenv("GEMINI_MODEL_NAME") or "gemini-1.5-flash"
     
-    console.print(f"[bold blue]Testing API Connection[/bold blue]")
+    console.print(f"[bold blue]Testing API Connection (google-genai SDK)[/bold blue]")
     console.print(f"Model: [cyan]{model_name}[/cyan]")
     
     if not api_key:
@@ -16,11 +16,13 @@ def test_connection():
         return
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name=model_name)
+        client = genai.Client(api_key=api_key)
         
         console.print("Sending a simple ping message...")
-        response = model.generate_content("Hello! Please reply with 'ACK' if you receive this.")
+        response = client.models.generate_content(
+            model=model_name,
+            contents="Hello! Please reply with 'ACK' if you receive this."
+        )
         
         console.print("[bold green]Success![/bold green]")
         console.print(f"Response: {response.text}")

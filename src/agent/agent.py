@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Any, Dict
 import os
 import time
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from rich.console import Console
 
 # リッチな出力を提供するためのコンソールインスタンス
@@ -40,18 +41,18 @@ class Agent(ABC):
             error_msg = "GEMINI_API_KEY environment variable is not set."
             console.print(f"[bold red]Error:[/bold red] {error_msg}")
             raise ValueError(error_msg)
-        else:
-            genai.configure(api_key=api_key)
+        # Clientの初期化
+        self.client = genai.Client(api_key=api_key)
 
-        # モデルの初期化
-        self.model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=self._build_system_prompt(),
-            tools=self.tools
-        )
-        
         # チャットセッションの開始（手動で関数呼び出しを制御するため False に設定）
-        self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=False)
+        self.chat_session = self.client.chats.create(
+            model=self.model_name,
+            config=types.GenerateContentConfig(
+                system_instruction=self._build_system_prompt(),
+                tools=self.tools,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+            )
+        )
 
     def _build_system_prompt(self) -> str:
         """
@@ -101,7 +102,8 @@ class Agent(ABC):
             
             try:
                 # ツール実行依頼が含まれているか確認
-                function_calls = [part.function_call for part in response.parts if part.function_call]
+                parts = response.candidates[0].content.parts if response.candidates else []
+                function_calls = [part.function_call for part in parts if part.function_call]
                 
                 if not function_calls:
                     # 思考が完了し、最終的なテキスト応答が得られた
@@ -116,12 +118,12 @@ class Agent(ABC):
                 for fc in function_calls:
                     result = self.execute_tool(fc.name, dict(fc.args))
                     # TODO: 結果が長すぎる場合は切り詰めるなどの処理も検討可能
-                    tool_results.append({
-                        "function_response": {
-                            "name": fc.name,
-                            "response": {"result": result}
-                        }
-                    })
+                    tool_results.append(
+                        types.Part.from_function_response(
+                            name=fc.name,
+                            response={"result": result}
+                        )
+                    )
                 
                 # 実行結果をモデルに返送
                 console.print(f"[dim]{self.name} is processing tool results...[/dim]")
