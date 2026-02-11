@@ -1,0 +1,87 @@
+# GeminiCLI Agent Team - Project Context & Rules
+
+このファイルは、本プロジェクトに関わるAIエージェントおよび開発者が、**最初に参照すべきコンテキスト情報** と **守るべきルール** を定義します。
+
+**AI Agent Instructions:**
+You are working on the "GeminiCLI Agent Team" project.
+Always read this file first to understand the project structure, rules, and critical decisions.
+
+## 1. プロジェクトの目的 (Our Mission)
+
+「GeminiCLI Agent Team」は、**複数の専門AIエージェント（Manager, Architect, Coder...）がチームとして連携し、自律的にコーディングタスクを解決するCLIアプリケーション** です。
+単なる自動化ツールではなく、「相談」「報連相」「役割分担」といった人間らしいチームワークをエージェント間で再現することを目指します。
+
+## 2. 重要ルール (Critical Rules)
+
+### 2.1 意思決定プロセス (ADR: Architecture Decision Records)
+
+重要な技術的な決定、アーキテクチャの変更、コンセプトの再定義を行った際は、必ず **ADR (Architecture Decision Records)** として記録を残してください。
+
+-   **場所**: `./doc/ADR/` ディレクトリ配下
+-   **命名規則**: `NNNN-title-in-kebab-case.md` (NNNNは0001からの連番)
+-   **フォーマット**: `doc/templates/adr-template.md` を必ず参照すること。
+
+### 2.2 開発環境 (Environment Strategy)
+
+**原則として、ホストOS（ローカルマシン）に直接Python環境を構築・実行することは禁止されています。**
+必ず以下の構成を守ってください (参照: `ADR/0001-use-docker-and-uv.md`)。
+
+-   **Runtime**: **Docker** (必須)
+    -   エージェントの暴走や誤操作からホストOSを保護するため、常にコンテナ内で実行すること。
+    -   設定ファイルは `compose.yaml` (または `compose.yml`) を使用すること。レガシーな `docker-compose.yml` は使用しない。
+-   **Package Manager**: **uv** (必須)
+    -   高速な環境構築と依存解決のため、`pip` ではなく `uv` を使用すること。
+-   **Execution**:
+    -   アプリケーションの実行、および **単体テストの実行** は、必ずDockerコンテナ内で行うこと (`docker compose exec ...`)。
+    -   ホストマシンのPython環境での実行は、環境差異による不具合を防ぐため禁止する。
+
+### 2.3 言語ガイドライン (Language Guidelines)
+
+-   **コメント・ドキュメント**: **日本語 (Japanese) を使用すること (MUST)**
+    -   コード内のコメント、Docstring、ADR、README、コミットメッセージ等は原則として日本語で記述する。
+    -   変数名や関数名は英語で良いが、その説明は日本語で行うこと。
+    -   AIエージェントが生成する対話や思考の出力も日本語とすること。
+
+### 2.4 ルールの更新と維持
+
+-   **永続的な遵守事項の追加**: ユーザーから「永続的に遵守すること」や「今後常に守ること」といった指示があった場合、AIエージェントは即座にその内容を本ファイル (`.cursorrules`) の「重要ルール」セクションに追加しなければならない。
+    -   これにより、コンテキストウィンドウがリセットされてもルールが維持されることを保証する。
+
+### 2.5 コーディングガイドライン (Coding Guidelines)
+
+-   **命名規則**: **1クラス1ファイル (One Class per File) の原則**
+    -   主要なクラスを定義する場合、ファイル名とクラス名は一致させること（Pythonのスネークケースとパスカルケースの対応）。
+    -   例: `Manager` クラス -> `manager.py`, `Agent` クラス -> `agent.py`
+    -   `base.py` のような汎用的な名前は避け、具体的な役割を示す名前にすること。
+
+-   **テスト駆動 (Testing Protocol)**: **新規実装時のテスト作成 (MUST)**, **pytestの使用 (MUST)**
+    -   新しいクラスや関数を実装する際は、必ず対応する単体テストを作成すること。
+    -   テストフレームワークとして **pytest** を使用する。
+    -   テストファイルは `tests/` ディレクトリ配下に配置し、`test_` プレフィックスを付ける。
+    -   例: `src/agent/manager.py` -> `tests/agent/test_manager.py`
+
+### 2.6 ポストモーテム (Post-mortems)
+
+重大な不具合、予期せぬ挙動、または設計上の欠陥によるトラブルが発生した場合は、必ず **ポストモーテム (Post-mortem)** を実施し、記録を残してください。
+
+-   **場所**: `./doc/post-mortems/` ディレクトリ配下
+-   **命名規則**: `YYYY-MM-DD-title-in-kebab-case.md`
+-   **目的**: 根本原因を特定し、具体的な是正措置と再発防止策を定義することで、チーム全体の知見とする。
+-   **フォーマット**: `doc/templates/post-mortem-template.md` を必ず参照すること。
+
+## 3. チーム構成 (Team Roster)
+
+1.  **Manager**: プロジェクトリーダー。タスク分解、進捗管理、相談窓口。
+2.  **Architect**: 技術選定、システム設計、ディレクトリ構成案の作成。
+3.  **Coder**: 実装担当。Manager/Architectに相談しながらコードを書く。
+4.  **Reviewer**: コード品質、セキュリティチェック。
+
+## 4. 参照すべきドキュメント (References)
+
+-   `README.md`: プロジェクトの概要と実行手順。
+-   `ACTION_PLAN.md`: 現在の開発フェーズと詳細なタスクリスト。
+-   `ADR/`: 過去の重要な技術的決定事項。
+
+---
+**Note to AI Agents**: 
+開発を開始する前に、必ず上記の情報をロードし、特に **ADRの内容に違反しない** ように行動してください。

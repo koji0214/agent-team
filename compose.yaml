@@ -1,0 +1,18 @@
+services:
+  agent-team:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app # Mount entire project
+    env_file:
+      - .env
+    command: sleep infinity
+    tty: true # Allocate a pseudo-TTY (for interactive CLI)
+    stdin_open: true # Keep STDIN open even if not attached
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+
+# Sandbox volume can be a named volume or bind mount.
+# Here we use bind mount for easy access from host.
