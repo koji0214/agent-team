@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import json
 import ast
-import google.generativeai as genai
+from google.genai import types
 from rich.console import Console
 
 # Consoleインスタンス
@@ -60,20 +60,20 @@ class Manager(Agent):
         
         # LLMを使用してタスクを分解する
         try:
-            # 自身と同じモデル構成を使用するが、ツールは無効化して純粋なテキスト生成として扱う
-            decomposition_model = genai.GenerativeModel(
-                model_name=self.model_name,
-                system_instruction="""
-                あなたは熟練のプロジェクトマネージャーです。
-                与えられた要件を、実行可能な具体的なタスクのリストに分解してください。
-                
-                出力形式:
-                Pythonのリスト形式の文字列のみを出力してください。余計なマークダウンや説明は不要です。
-                例: ["要件定義書の作成", "データベース設計", "API実装", "テスト"]
-                """,
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                config=types.GenerateContentConfig(
+                    system_instruction="""
+                    あなたは熟練のプロジェクトマネージャーです。
+                    与えられた要件を、実行可能な具体的なタスクのリストに分解してください。
+                    
+                    出力形式:
+                    Pythonのリスト形式の文字列のみを出力してください。余計なマークダウンや説明は不要です。
+                    例: ["要件定義書の作成", "データベース設計", "API実装", "テスト"]
+                    """,
+                ),
+                contents=f"要件: {requirements}"
             )
-            
-            response = decomposition_model.generate_content(f"要件: {requirements}")
             response_text = response.text.strip()
             
             # マークダウンのコードブロックが含まれている場合のクリーニング

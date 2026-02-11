@@ -5,7 +5,7 @@ description = "Multi-agent collaborative coding environment powered by Gemini AP
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-generativeai>=0.5.0",
+    "google-genai",
     "typer==0.9.0",
     "rich==13.7.0",
     "python-dotenv==1.0.1",

@@ -10,9 +10,9 @@ class ConcreteAgent(Agent):
 
 @pytest.fixture
 def mock_genai():
-    with patch('google.generativeai.GenerativeModel') as mock_model:
+    with patch('google.genai.Client') as mock_client:
         mock_chat = MagicMock()
-        mock_model.return_value.start_chat.return_value = mock_chat
+        mock_client.return_value.chats.create.return_value = mock_chat
         yield mock_chat
 
 @pytest.fixture
@@ -30,6 +30,8 @@ def test_agent_send_message(agent, mock_genai):
     # Gemini APIのレスポンスをモック
     mock_response = MagicMock()
     mock_response.text = "Hello from Gemini"
+    mock_response.candidates = [MagicMock()]
+    mock_response.candidates[0].content.parts = []
     mock_genai.send_message.return_value = mock_response
 
     response = agent.send_message("Hello")
